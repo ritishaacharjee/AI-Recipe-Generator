@@ -1,0 +1,5 @@
+node_modules/
+chefmind.db
+sessions/
+.env
+.DS_Store

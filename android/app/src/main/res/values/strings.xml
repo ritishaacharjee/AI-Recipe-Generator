@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChefMind</string>
+    <string name="title_activity_main">ChefMind</string>
+    <string name="package_name">com.chefmind.app</string>
+    <string name="custom_url_scheme">com.chefmind.app</string>
+</resources>

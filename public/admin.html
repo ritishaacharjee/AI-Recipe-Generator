@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  const API_BASE_URL = 'https://ai-recipe-generator-9jut.onrender.com';
+  const originalFetch = window.fetch;
+  window.fetch = async function(resource, config) {
+    if (typeof resource === 'string' && resource.startsWith('/api/')) {
+      const targetUrl = API_BASE_URL + resource;
+      config = config || {};
+      config.credentials = 'include';
+      return originalFetch(targetUrl, config);
+    }
+    return originalFetch(resource, config);
+  };
+</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChefMind Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="discover.css">
+  <style>
+    /* Admin specific styles */
+    body { background-color: var(--obsidian); color: var(--cream); font-family: var(--font-body); }
+    .admin-container { max-width: 1200px; margin: 4rem auto; padding: 0 2rem; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+    .admin-title { font-family: var(--font-display); font-size: 3rem; color: var(--amber); }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 4rem; }
+    .stat-card { background: var(--charcoal); border: 1px solid var(--border); padding: 2rem; text-align: center; }
+    .stat-value { font-size: 3.5rem; font-family: var(--font-display); color: var(--cream); margin-bottom: 0.5rem; }
+    .stat-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+    
+    .tables-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 900px) { .tables-grid { grid-template-columns: 1fr; } }
+    
+    .table-section { background: var(--deep); border: 1px solid var(--border); padding: 2rem; }
+    .table-title { font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    td { color: var(--cream); }
+    
+    .error-container { text-align: center; margin-top: 20vh; }
+    .error-title { font-family: var(--font-display); font-size: 3rem; color: #e06b6b; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  
+  <div class="admin-container" id="admin-content" style="display: none;">
+    <div class="admin-header">
+      <h1 class="admin-title">Platform Overview</h1>
+      <a href="/" class="btn-ghost" style="text-decoration: none;">← Back to App</a>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-users">-</div>
+        <div class="stat-label">Registered Users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-recipes">-</div>
+        <div class="stat-label">Saved Recipes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-searches">-</div>
+        <div class="stat-label">Total Searches</div>
+      </div>
+    </div>
+    
+    <div class="tables-grid">
+      <div class="table-section">
+        <h2 class="table-title">Recent Users</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+      
+      <div class="table-section">
+        <h2 class="table-title">Recent Searches</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Query</th>
+              <th>Type</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="searches-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-container" id="error-content" style="display: none;">
+    <h1 class="error-title">Unauthorized Access</h1>
+    <p style="color: var(--muted); margin-bottom: 2rem;">You do not have permission to view this page.</p>
+    <a href="/" class="btn-amber" style="text-decoration: none;">Return to Home</a>
+  </div>
+
+  <script>
+    async function loadAdminDashboard() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        
+        if (res.status === 401 || res.status === 403) {
+          document.getElementById('error-content').style.display = 'block';
+          return;
+        }
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error('Failed to load stats');
+        
+        document.getElementById('admin-content').style.display = 'block';
+        
+        document.getElementById('stat-users').textContent = data.stats.users;
+        document.getElementById('stat-recipes').textContent = data.stats.recipes;
+        document.getElementById('stat-searches').textContent = data.stats.searches;
+        
+        const usersHtml = data.recentUsers.map(u => `
+          <tr>
+            <td>#${u.id}</td>
+            <td>${u.username}</td>
+            <td style="color: var(--muted)">${new Date(u.created_at).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+        document.getElementById('users-tbody').innerHTML = usersHtml || '<tr><td colspan="3">No users yet</td></tr>';
+        
+        const searchesHtml = data.recentSearches.map(s => `
+          <tr>
+            <td>${s.query}</td>
+            <td><span style="font-size: 10px; padding: 2px 6px; background: rgba(200,134,10,0.2); color: var(--amber); border-radius: 4px;">${s.search_type}</span></td>
+            <td style="color: var(--muted)">${new Date(s.created_at).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+        document.getElementById('searches-tbody').innerHTML = searchesHtml || '<tr><td colspan="3">No searches yet</td></tr>';
+        
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error-content').style.display = 'block';
+        document.getElementById('error-content').innerHTML += `<p style="color:red;margin-top:1rem">${err.message}</p>`;
+      }
+    }
+    
+    window.onload = loadAdminDashboard;
+  </script>
+</body>
+</html>
