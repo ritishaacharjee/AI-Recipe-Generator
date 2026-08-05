@@ -17,6 +17,8 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── MIDDLEWARE ────────────────────────────────────────────────
+app.set('trust proxy', 1); // Trust Render's proxy for secure cookies
+
 app.use(cors({
   origin: true,
   credentials: true
