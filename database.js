@@ -48,12 +48,11 @@ const initDb = async () => {
     
     -- Table for connect-pg-simple sessions
     CREATE TABLE IF NOT EXISTS "session" (
-      "sid" varchar NOT NULL COLLATE "default",
+      "sid" varchar PRIMARY KEY,
       "sess" json NOT NULL,
       "expire" timestamp(6) NOT NULL
-    ) WITH (OIDS=FALSE);
+    );
     
-    ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT VALID;
     CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
   `).catch(err => {
     console.error('CRITICAL: Database initialization failed:', err);
