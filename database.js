@@ -56,7 +56,7 @@ const initDb = async () => {
     ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT VALID;
     CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
   `).catch(err => {
-    // Ignore constraint errors if tables already exist
+    console.error('CRITICAL: Database initialization failed:', err);
   });
 };
 
