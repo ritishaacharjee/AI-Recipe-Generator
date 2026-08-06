@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { stmts } = require('../database');
+const { db } = require('../database');
 
 // Middleware to check if user is admin
-function isAdmin(req, res, next) {
+async function isAdmin(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
-    const user = stmts.getUserById.get(req.session.userId);
+    const user = await db.getUserById(req.session.userId);
     if (!user || user.is_admin !== 1) {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -19,14 +19,14 @@ function isAdmin(req, res, next) {
 }
 
 // GET /api/admin/stats
-router.get('/stats', isAdmin, (req, res) => {
+router.get('/stats', isAdmin, async (req, res) => {
   try {
-    const users = stmts.countUsers.get().total;
-    const recipes = stmts.countRecipes.get().total;
-    const searches = stmts.countSearches.get().total;
+    const users = (await db.countUsers()).total;
+    const recipes = (await db.countRecipes()).total;
+    const searches = (await db.countSearches()).total;
 
-    const recentUsers = stmts.getRecentUsers.all();
-    const recentSearches = stmts.getRecentSearches.all();
+    const recentUsers = await db.getRecentUsers();
+    const recentSearches = await db.getRecentSearches();
 
     res.json({
       stats: { users, recipes, searches },

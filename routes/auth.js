@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs'); // pure JS — no Visual Studio needed
-const { stmts } = require('../database');
+const { db } = require('../database');
 
 const router = express.Router();
 const SALT_ROUNDS = 10;
@@ -26,21 +26,20 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Invalid email address.' });
 
   try {
-    if (stmts.getUserByEmail.get(email))
+    if (await db.getUserByEmail(email))
       return res.status(409).json({ error: 'Email already registered.' });
-    if (stmts.getUserByUsername.get(username))
+    if (await db.getUserByUsername(username))
       return res.status(409).json({ error: 'Username already taken.' });
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
     // Make the very first user an admin
     let is_admin = 0;
     try {
-      const userCount = stmts.countUsers.get();
-      if (userCount.total === 0) is_admin = 1;
+      const userCount = await db.countUsers();
+      if (parseInt(userCount.total) === 0) is_admin = 1;
     } catch(e) {}
 
-    const result = stmts.createUser.run({ username, email, password_hash, is_admin });
-    const user = stmts.getUserById.get(Number(result.lastInsertRowid));
+    const user = await db.createUser(username, email, password_hash, is_admin);
 
     req.session.userId = Number(user.id);
     req.session.username = user.username;
@@ -58,7 +57,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required.' });
 
   try {
-    const user = stmts.getUserByEmail.get(email);
+    const user = await db.getUserByEmail(email);
     if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
 
     const match = await bcrypt.compare(password, user.password_hash);
@@ -83,9 +82,9 @@ router.post('/logout', (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.session.userId) return res.json({ user: null });
-  const user = stmts.getUserById.get(req.session.userId);
+  const user = await db.getUserById(req.session.userId);
   return res.json({ user: user ? safeUser(user) : null });
 });
 

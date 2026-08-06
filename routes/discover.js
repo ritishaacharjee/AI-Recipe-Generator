@@ -4,7 +4,7 @@ const {
   lookupDish, discoverByPlace, getDishRecipe, suggestByWeatherCuisine,
   getWeatherList, getCuisineList, getPlaceList
 } = require('../discoveryEngine');
-const { stmts } = require('../database');
+const { db } = require('../database');
 
 const router = express.Router();
 
@@ -19,10 +19,10 @@ router.get('/places', (_req, res) => {
 });
 
 // GET /api/discover/history  — get search history for logged-in user
-router.get('/history', (req, res) => {
+router.get('/history', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    const history = stmts.getHistoryByUser.all(req.session.userId);
+    const history = await db.getHistoryByUser(req.session.userId);
     res.json({ history });
   } catch (err) {
     console.error('Fetch history error:', err);
@@ -31,7 +31,7 @@ router.get('/history', (req, res) => {
 });
 
 // POST /api/discover/dish  — by dish name (Dish Lookup section)
-router.post('/dish', (req, res) => {
+router.post('/dish', async (req, res) => {
   const { dishName, people, diets, skill } = req.body || {};
   if (!dishName?.trim()) return res.status(400).json({ error: 'Please enter a dish name.' });
   try {
@@ -39,7 +39,7 @@ router.post('/dish', (req, res) => {
     
     // Log history
     if (req.session.userId) {
-      try { stmts.saveHistory.run({ user_id: req.session.userId, query: dishName.trim(), search_type: 'dish' }); } catch(e){}
+      try { await db.saveHistory(req.session.userId, dishName.trim(), 'dish'); } catch(e){}
     }
     
     return res.json(result);
@@ -64,7 +64,7 @@ router.post('/dish-recipe', (req, res) => {
 });
 
 // POST /api/discover/place  — place discovery (returns cards, no recipes yet)
-router.post('/place', (req, res) => {
+router.post('/place', async (req, res) => {
   const { place } = req.body || {};
   if (!place?.trim()) return res.status(400).json({ error: 'Please enter a place name.' });
   try {
@@ -77,7 +77,7 @@ router.post('/place', (req, res) => {
 
     // Log history
     if (req.session.userId) {
-      try { stmts.saveHistory.run({ user_id: req.session.userId, query: place.trim(), search_type: 'place' }); } catch(e){}
+      try { await db.saveHistory(req.session.userId, place.trim(), 'place'); } catch(e){}
     }
 
     return res.json(result);
@@ -88,7 +88,7 @@ router.post('/place', (req, res) => {
 });
 
 // POST /api/discover/weather-cuisine  — weather & cuisine (returns cards)
-router.post('/weather-cuisine', (req, res) => {
+router.post('/weather-cuisine', async (req, res) => {
   const { weather, cuisine } = req.body || {};
   if (!weather && !cuisine) return res.status(400).json({ error: 'Please select a weather or cuisine.' });
   try {
@@ -98,7 +98,7 @@ router.post('/weather-cuisine', (req, res) => {
     // Log history
     if (req.session.userId) {
       const query = [weather, cuisine].filter(Boolean).join(' & ');
-      try { stmts.saveHistory.run({ user_id: req.session.userId, query, search_type: 'weather-cuisine' }); } catch(e){}
+      try { await db.saveHistory(req.session.userId, query, 'weather-cuisine'); } catch(e){}
     }
 
     return res.json(result);

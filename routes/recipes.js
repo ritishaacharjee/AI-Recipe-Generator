@@ -1,5 +1,5 @@
 const express = require('express');
-const { stmts } = require('../database');
+const { db } = require('../database');
 const router = express.Router();
 
 function requireAuth(req, res, next) {
@@ -20,43 +20,39 @@ function parseRecipe(r) {
 }
 
 // GET /api/recipes
-router.get('/', requireAuth, (req, res) => {
-  const rows = stmts.getRecipesByUser.all(req.session.userId);
+router.get('/', requireAuth, async (req, res) => {
+  const rows = await db.getRecipesByUser(req.session.userId);
   return res.json({ recipes: rows.map(parseRecipe) });
 });
 
 // GET /api/recipes/stats
-router.get('/stats', requireAuth, (req, res) => {
-  const row = stmts.countRecipesByUser.get(req.session.userId);
+router.get('/stats', requireAuth, async (req, res) => {
+  const row = await db.countRecipesByUser(req.session.userId);
   return res.json({ count: Number(row.count) });
 });
 
 // POST /api/recipes
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const { title, cuisine, prepTime, cookTime, servings, calories, difficulty, ingredients, steps, chefTip } = req.body || {};
 
   if (!title || !Array.isArray(ingredients) || !Array.isArray(steps))
     return res.status(400).json({ error: 'title, ingredients (array), and steps (array) are required.' });
 
   try {
-    const result = stmts.saveRecipe.run({
-      user_id:    req.session.userId,
+    const saved = await db.saveRecipe(
+      req.session.userId,
       title,
-      cuisine:    cuisine    || '',
-      prep_time:  prepTime   || '',
-      cook_time:  cookTime   || '',
-      servings:   servings   || 2,
-      calories:   calories   || 0,
-      difficulty: difficulty || '',
-      ingredients: JSON.stringify(ingredients),
-      steps:       JSON.stringify(steps),
-      chef_tip:   chefTip   || '',
-    });
-
-    const saved = stmts.getRecipeById.get(
-      Number(result.lastInsertRowid),
-      req.session.userId
+      cuisine    || '',
+      prepTime   || '',
+      cookTime   || '',
+      servings   || 2,
+      calories   || 0,
+      difficulty || '',
+      JSON.stringify(ingredients),
+      JSON.stringify(steps),
+      chefTip   || ''
     );
+
     return res.status(201).json({ recipe: parseRecipe(saved) });
   } catch (err) {
     console.error('Save recipe error:', err);
@@ -65,10 +61,8 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 // DELETE /api/recipes/:id
-router.delete('/:id', requireAuth, (req, res) => {
-  const result = stmts.deleteRecipe.run(Number(req.params.id), req.session.userId);
-  if (result.changes === 0)
-    return res.status(404).json({ error: 'Recipe not found or not yours.' });
+router.delete('/:id', requireAuth, async (req, res) => {
+  await db.deleteRecipe(Number(req.params.id), req.session.userId);
   return res.json({ ok: true });
 });
 
